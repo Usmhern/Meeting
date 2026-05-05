@@ -8,59 +8,137 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
 body {
-    font-family: Arial;
-    background: #0f172a;
+    background: linear-gradient(135deg, #0f172a, #1e3a8a);
     color: white;
-    text-align: center;
+    min-height: 100vh;
     padding: 20px;
 }
 
-select, button {
-    padding: 10px;
-    margin: 5px;
-    border-radius: 8px;
-    border: none;
+/* Glass Container */
+.container {
+    max-width: 900px;
+    margin: auto;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    animation: fadeIn 1s ease;
 }
 
-.start { background: green; color: white; }
-.stop { background: red; color: white; }
-.download { background: blue; color: white; }
+@keyframes fadeIn {
+    from {opacity: 0; transform: translateY(20px);}
+    to {opacity: 1; transform: translateY(0);}
+}
 
-#transcript, #summary {
-    margin-top: 20px;
-    padding: 15px;
-    background: #1e293b;
+h1 {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+select, button {
+    padding: 12px 18px;
     border-radius: 10px;
-    height: 200px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+/* Buttons */
+.start { background: linear-gradient(45deg, #22c55e, #16a34a); }
+.stop { background: linear-gradient(45deg, #ef4444, #b91c1c); }
+.download { background: linear-gradient(45deg, #3b82f6, #1d4ed8); }
+.summaryBtn { background: linear-gradient(45deg, #f59e0b, #d97706); }
+
+button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255,255,255,0.3);
+}
+
+/* Status Pulse */
+.status {
+    text-align: center;
+    margin: 10px 0;
+    font-size: 14px;
+}
+
+.listening {
+    color: #22c55e;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% {opacity: 1;}
+    50% {opacity: 0.4;}
+    100% {opacity: 1;}
+}
+
+/* Panels */
+.panel {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 15px;
+    background: rgba(0,0,0,0.4);
+    height: 220px;
     overflow-y: auto;
     text-align: left;
     white-space: pre-wrap;
+    transition: 0.3s;
+}
+
+.panel:hover {
+    box-shadow: 0 0 20px rgba(255,255,255,0.1);
+}
+
+h3 {
+    margin-top: 10px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>🎤 AI Meeting Transcriber Pro</h2>
+<div class="container">
+    <h1>🎤 AI Meeting Transcriber Pro</h1>
 
-<select id="language">
-    <option value="en-US">English</option>
-    <option value="ha-NG">Hausa (Experimental)</option>
-</select>
+    <div class="controls">
+        <select id="language">
+            <option value="en-US">English</option>
+            <option value="ha-NG">Hausa (Experimental)</option>
+        </select>
 
-<br>
+        <button class="start" onclick="start()">▶ Start</button>
+        <button class="stop" onclick="stop()">⏹ Stop</button>
+        <button class="summaryBtn" onclick="generateSummary()">🧠 Summary</button>
+        <button class="download" onclick="downloadPDF()">📄 PDF</button>
+    </div>
 
-<button class="start" onclick="start()">Start</button>
-<button class="stop" onclick="stop()">Stop</button>
-<button onclick="generateSummary()">Generate Summary</button>
-<button class="download" onclick="downloadPDF()">Download PDF</button>
+    <div id="status" class="status">Status: Idle</div>
 
-<h3>📄 Transcript</h3>
-<div id="transcript"></div>
+    <h3>📄 Transcript</h3>
+    <div id="transcript" class="panel"></div>
 
-<h3>🧠 Summary</h3>
-<div id="summary"></div>
+    <h3>🧠 Summary</h3>
+    <div id="summary" class="panel"></div>
+</div>
 
 <script>
 let recognition;
@@ -72,6 +150,11 @@ if (SpeechRecognition) {
     recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
+
+    recognition.onstart = () => {
+        document.getElementById("status").innerHTML = "🎤 Listening...";
+        document.getElementById("status").classList.add("listening");
+    };
 
     recognition.onresult = (event) => {
         let interim = "";
@@ -85,10 +168,22 @@ if (SpeechRecognition) {
         }
         document.getElementById("transcript").innerText = finalText + interim;
     };
+
+    recognition.onerror = (e) => {
+        document.getElementById("status").innerText = "Error: " + e.error;
+    };
+
+    recognition.onend = () => {
+        document.getElementById("status").innerText = "Status: Stopped";
+        document.getElementById("status").classList.remove("listening");
+    };
+} else {
+    alert("Use Google Chrome for best performance");
 }
 
 function start() {
     finalText = "";
+    document.getElementById("transcript").innerText = "";
     recognition.lang = document.getElementById("language").value;
     recognition.start();
 }
@@ -97,14 +192,16 @@ function stop() {
     recognition.stop();
 }
 
+/* Better Summary Logic */
 function generateSummary() {
     if (!finalText) return;
 
-    // Simple AI-like summarization
-    let sentences = finalText.split(".");
-    let summary = sentences.slice(0, 3).join(".") + "...";
+    let sentences = finalText.split(/[.!?]/);
+    let clean = sentences.filter(s => s.trim().length > 20);
 
-    document.getElementById("summary").innerText = summary;
+    let summary = clean.slice(0, 5).join(". ") + ".";
+
+    document.getElementById("summary").innerText = summary || "No summary available.";
 }
 
 function downloadPDF() {
@@ -117,10 +214,9 @@ function downloadPDF() {
 
     doc.addPage();
     doc.text("SUMMARY", 10, 10);
-    let sumLines = doc.splitTextToSize(
-        document.getElementById("summary").innerText,
-        180
-    );
+
+    let summaryText = document.getElementById("summary").innerText;
+    let sumLines = doc.splitTextToSize(summaryText, 180);
     doc.text(sumLines, 10, 20);
 
     doc.save("meeting.pdf");
