@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Meeting Transcriber Pro</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: white;
+    text-align: center;
+    padding: 20px;
+}
+
+select, button {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 8px;
+    border: none;
+}
+
+.start { background: green; color: white; }
+.stop { background: red; color: white; }
+.download { background: blue; color: white; }
+
+#transcript, #summary {
+    margin-top: 20px;
+    padding: 15px;
+    background: #1e293b;
+    border-radius: 10px;
+    height: 200px;
+    overflow-y: auto;
+    text-align: left;
+    white-space: pre-wrap;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🎤 AI Meeting Transcriber Pro</h2>
+
+<select id="language">
+    <option value="en-US">English</option>
+    <option value="ha-NG">Hausa (Experimental)</option>
+</select>
+
+<br>
+
+<button class="start" onclick="start()">Start</button>
+<button class="stop" onclick="stop()">Stop</button>
+<button onclick="generateSummary()">Generate Summary</button>
+<button class="download" onclick="downloadPDF()">Download PDF</button>
+
+<h3>📄 Transcript</h3>
+<div id="transcript"></div>
+
+<h3>🧠 Summary</h3>
+<div id="summary"></div>
+
+<script>
+let recognition;
+let finalText = "";
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            let txt = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalText += txt + "\n";
+            } else {
+                interim += txt;
+            }
+        }
+        document.getElementById("transcript").innerText = finalText + interim;
+    };
+}
+
+function start() {
+    finalText = "";
+    recognition.lang = document.getElementById("language").value;
+    recognition.start();
+}
+
+function stop() {
+    recognition.stop();
+}
+
+function generateSummary() {
+    if (!finalText) return;
+
+    // Simple AI-like summarization
+    let sentences = finalText.split(".");
+    let summary = sentences.slice(0, 3).join(".") + "...";
+
+    document.getElementById("summary").innerText = summary;
+}
+
+function downloadPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.text("MEETING TRANSCRIPT", 10, 10);
+    let textLines = doc.splitTextToSize(finalText, 180);
+    doc.text(textLines, 10, 20);
+
+    doc.addPage();
+    doc.text("SUMMARY", 10, 10);
+    let sumLines = doc.splitTextToSize(
+        document.getElementById("summary").innerText,
+        180
+    );
+    doc.text(sumLines, 10, 20);
+
+    doc.save("meeting.pdf");
+}
+</script>
+
+</body>
+</html>
